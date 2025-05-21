@@ -1,107 +1,62 @@
 import streamlit as st
 import pickle
-import pandas as pd
-import numpy as np
 
-# Set page title and icon
-st.set_page_config(page_title="Model Prediction App", page_icon="🤖")
+# Set the title of the Streamlit app
+st.title('Model Prediction App')
 
-# Load the trained model
-@st.cache_resource
-def load_model():
-    try:
-        with open('model.pkl', 'rb') as file:
-            model = pickle.load(file)
-        return model
-    except Exception as e:
-        st.error(f"Error loading model: {e}")
-        return None
+# Add a description
+st.write('This app loads a pre-trained model and makes predictions.')
 
-model = load_model()
-
-# App title and description
-st.title("Model Prediction App")
-st.write("This app uses a pre-trained model to make predictions based on your input.")
-
-# Check if model loaded successfully
-if model is None:
-    st.error("Failed to load the model. Please ensure 'model.pkl' exists in the same directory.")
+# Load the model
+try:
+    with open('model.pkl', 'rb') as file:
+        model = pickle.load(file)
+    st.success('Model loaded successfully!')
+except FileNotFoundError:
+    st.error("Error: 'model.pkl' not found. Please make sure the model file is in the same directory as 'app.py'.")
+    st.stop() # Stop the app if the model isn't found
+except Exception as e:
+    st.error(f"Error loading model: {e}")
     st.stop()
 
-# Get feature names (assuming the model has this attribute)
-try:
-    if hasattr(model, 'feature_names_in_'):
-        feature_names = model.feature_names_in_
-    elif hasattr(model, 'feature_importances_'):
-        # If feature names aren't available, create generic ones
-        num_features = len(model.feature_importances_)
-        feature_names = [f'Feature_{i+1}' for i in range(num_features)]
-    else:
-        # For models without feature_importances_, ask user for number of features
-        num_features = st.number_input("Enter number of features in your model:", 
-                                     min_value=1, value=5, step=1)
-        feature_names = [f'Feature_{i+1}' for i in range(num_features)]
-except:
-    st.warning("Couldn't determine number of features. Using default feature names.")
-    feature_names = ['Feature_1', 'Feature_2', 'Feature_3', 'Feature_4', 'Feature_5']
+# --- Example: How to use the loaded model (replace with your actual model's input) ---
 
-# Input form for features
-st.header("Input Features")
-input_data = {}
+st.header('Make a Prediction')
 
-# Create input widgets for each feature
-cols = st.columns(2)  # Split inputs into 2 columns for better layout
-for i, feature in enumerate(feature_names):
-    with cols[i % 2]:  # Alternate between columns
-        input_data[feature] = st.number_input(
-            f"{feature}:",
-            value=0.0,
-            step=0.01,
-            format="%.2f"
-        )
+# Assuming your model expects numerical inputs, create input fields
+# Replace these with the actual features your model expects
+feature1 = st.slider('Input Feature 1', min_value=0.0, max_value=10.0, value=5.0, step=0.1)
+feature2 = st.number_input('Input Feature 2', min_value=0.0, max_value=100.0, value=50.0)
+feature3 = st.checkbox('Input Feature 3 (True/False)')
 
-# Prediction button
-if st.button("Make Prediction"):
+# Create a button to trigger prediction
+if st.button('Predict'):
+    # Prepare input data for the model
+    # This part heavily depends on how your model expects input.
+    # For example, if it's a scikit-learn model, it might expect a 2D array.
+    
+    # Example: If your model expects a list of features
+    input_data = [feature1, feature2, 1 if feature3 else 0] # Convert boolean to 0 or 1
+
     try:
-        # Convert input to DataFrame (model expects 2D array)
-        input_df = pd.DataFrame([input_data])
+        # Make a prediction
+        # You might need to reshape your input_data depending on your model
+        # For a single prediction with a scikit-learn model, it's often model.predict([[feature1, feature2, ...]])
+        prediction = model.predict([input_data])
         
-        # Make prediction
-        prediction = model.predict(input_df)
-        
-        # Display results
-        st.success("Prediction made successfully!")
-        st.subheader("Results")
-        
-        if len(prediction.shape) == 1 and prediction.shape[0] == 1:
-            # Single output
-            st.metric(label="Prediction", value=f"{prediction[0]:.2f}")
-        else:
-            # Multiple outputs
-            for i, pred in enumerate(prediction[0]):
-                st.metric(label=f"Output {i+1}", value=f"{pred:.2f}")
-                
-        # Show input data
-        st.subheader("Input Summary")
-        st.write(input_df)
+        st.subheader('Prediction Result:')
+        st.write(f"The predicted value is: **{prediction[0]}**") # Assuming prediction returns an array
         
     except Exception as e:
-        st.error(f"Error making prediction: {e}")
+        st.error(f"An error occurred during prediction: {e}")
 
-# Add some info about the model
-st.sidebar.header("Model Information")
-st.sidebar.write(f"Model type: {type(model).__name__}")
-try:
-    if hasattr(model, 'feature_importances_'):
-        st.sidebar.subheader("Feature Importances")
-        importance_df = pd.DataFrame({
-            'Feature': feature_names,
-            'Importance': model.feature_importances_
-        }).sort_values('Importance', ascending=False)
-        st.sidebar.dataframe(importance_df)
-except:
-    pass
+st.markdown("""
+---
+**Instructions:**
+1.  Save this code as `app.py`.
+2.  Make sure your `model.pkl` file is in the same directory as `app.py`.
+3.  Install Streamlit: `pip install streamlit`
+4.  Run the app from your terminal: `streamlit run app.py`
 
-# Add footer
-st.sidebar.markdown("---")
-st.sidebar.markdown("Built with ❤️ using Streamlit")
+**Note:** You will need to adjust the "Make a Prediction" section (input fields and `input_data` preparation) to match the exact input requirements of your `model.pkl`.
+""")
